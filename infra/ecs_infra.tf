@@ -29,7 +29,7 @@ resource "aws_ecs_service" "hello_world_service" {
   name            = "hello-world-service"
   cluster         = aws_ecs_cluster.cluster.id
   task_definition = aws_ecs_task_definition.hello_world.arn
-  desired_count   = 2  // Recommended to have more than one instance for reliability
+  desired_count   = 2
   launch_type     = "FARGATE"
 
   load_balancer {
@@ -39,33 +39,10 @@ resource "aws_ecs_service" "hello_world_service" {
   }
 
   network_configuration {
-    subnets          = slice(data.aws_subnet_ids.default.ids, 0, 2)
+    subnets          = slice(tolist(data.aws_subnet_ids.default.ids), 0, 2)
     security_groups  = [aws_security_group.ecs_tasks.id]
     assign_public_ip = true
   }
-
   depends_on = [aws_lb_listener.front_end]
 }
 
-
-resource "aws_iam_role" "ecs_task_execution_role" {
-  name = "ecs_task_execution_role"
-
-  assume_role_policy = jsonencode({
-    Version   = "2012-10-17"
-    Statement = [
-      {
-        Action    = "sts:AssumeRole"
-        Effect    = "Allow"
-        Principal = {
-          Service = "ecs-tasks.amazonaws.com"
-        }
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
-  role       = aws_iam_role.ecs_task_execution_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-}

@@ -1,9 +1,11 @@
-data "aws_vpc" "default" {
-  default = true
-}
-
+# Data source to fetch the IDs of the default subnets
 data "aws_subnet_ids" "default" {
   vpc_id = data.aws_vpc.default.id
+}
+
+# Data source to fetch the default VPC
+data "aws_vpc" "default" {
+  default = true
 }
 
 resource "aws_security_group" "ecs_tasks" {
@@ -20,12 +22,11 @@ resource "aws_security_group" "ecs_tasks" {
 }
 
 resource "aws_lb" "ecs_alb" {
-  name               = "ecs-alb"
-  internal           = false
-  load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb_sg.id]
-  subnets            = slice(data.aws_subnet_ids.default.ids, 0, 2) // Using first two subnets for high availability
-
+  name                       = "ecs-alb"
+  internal                   = false
+  load_balancer_type         = "application"
+  security_groups            = [aws_security_group.alb_sg.id]
+  subnets                    = slice(tolist(data.aws_subnet_ids.default.ids), 0, 2)
   enable_deletion_protection = false
 }
 
@@ -61,10 +62,11 @@ resource "aws_lb_listener" "front_end" {
 }
 
 resource "aws_lb_target_group" "ecs_tg" {
-  name     = "ecs-target-group"
-  port     = 80
-  protocol = "HTTP"
-  vpc_id   = data.aws_vpc.default.id
+  name        = "ecs-target-group"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = data.aws_vpc.default.id
+  target_type = "ip"
 
   health_check {
     enabled             = true
